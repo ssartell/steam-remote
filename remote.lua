@@ -36,26 +36,31 @@ actions.rocket_league = function ()
     os.open("steam://rungameid/252950");
 end
 
+--@help Play a game from "recent games"
 actions.play_recent_game = function(index)
     local appid = recent_games_items[index + 1].appid;
     os.open("steam://rungameid/" .. appid);
 end
 
+--@help Play a game from "all games list"
 actions.play_all_game = function(index)
     local appid = all_games_items[index + 1].appid;
     os.open("steam://rungameid/" .. appid);
 end
 
+--@help Update chat text
 local chat_text = "";
 actions.update_text = function(text)
     chat_text = text;
 end
 
+--@help Update chat key 
 local chat_char = "t";
 actions.update_char = function(text)
     chat_char = text;
 end
 
+--@help Send chat
 actions.send_text = function()
     local local_chat_text = chat_text;
     layout.chat.text = "";
@@ -71,6 +76,7 @@ actions.send_text = function()
     end, 500);
 end
 
+--@help Send chat and then hit esc
 actions.send_text_esc = function()
     actions.send_text();
     tmr.timeout(function() 
@@ -78,6 +84,7 @@ actions.send_text_esc = function()
     end, 550);
 end
 
+--@help Update "all games list" filter
 local filter = "";
 actions.update_filter = function(text)
     filter = utf8.trim(text);
@@ -86,23 +93,27 @@ actions.update_filter = function(text)
     end
 end
 
+--@help Clear "all games list" filter
 actions.clear_filter = function()
     filter = "";
     layout.filter.text = "";
     update_all_games_list();
 end
 
+--@help Sort "all games" by playtime
 local sort = "by_playtime"
 actions.sort_by_playtime = function()
     sort = "by_playtime"
     update_all_games_list();
 end
 
+--@help Sort "all games" by name
 actions.sort_by_name = function()
     sort = "by_name";
     update_all_games_list();
 end
 
+-- Load recently played games
 function load_recently_played() 
     local url = "http://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key=" .. settings["steam-api-key"] .. "&steamid=" .. settings["steam-id"] .. "&format=json";
     http.get(url, function (err, resp)
@@ -113,6 +124,7 @@ function load_recently_played()
     end);
 end
 
+-- Load all games
 function load_all_games() 
     local url = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=" .. settings["steam-api-key"] .. "&steamid=" .. settings["steam-id"] .. "&format=json&include_appinfo=1";
     http.get(url, function (err, resp)
@@ -123,6 +135,7 @@ function load_all_games()
     end);
 end
 
+-- Update "recently played" list
 function update_recent_games_list()
     local n = 1;
     recent_games_list = {};
@@ -149,6 +162,7 @@ function update_recent_games_list()
     end);
 end
 
+-- Update "all games" list
 function update_all_games_list()
     local n = 1;
     all_games_items = {};
@@ -183,14 +197,17 @@ function update_all_games_list()
     end);
 end
 
+-- Compare games by playtime
 function by_playtime(a, b)
     return a.playtime_forever > b.playtime_forever;
 end
 
+-- Compare games by name
 function by_name(a, b)
     return a.name < b.name;
 end
 
+-- Download game image
 function download_images(games, n, callback)
     local game = games[n];
 
