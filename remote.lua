@@ -122,7 +122,7 @@ function load_recently_played()
         if (err) then return; end
         local result = data.fromjson(resp);
         recent_games = result.response.games;
-        update_recent_games_list();
+        download_images(recent_games, 1, update_recent_games_list);
     end);
 end
 
@@ -133,7 +133,7 @@ function load_all_games()
         if (err) then return; end
         local result = data.fromjson(resp);
         all_games = result.response.games;
-        update_all_games_list();
+        download_images(all_games, 1, update_all_games_list);
     end);
 end
 
@@ -144,9 +144,7 @@ function update_recent_games_list()
         :map(item_with_img)
         .value();
 
-    download_images(recent_games_list, 1, function() 
         server.update({ id = "recent_games", children = recent_games_list });
-    end);
 end
 
 -- Update "all games" list
@@ -166,9 +164,7 @@ function update_all_games_list()
         _.sort(all_games_items, by_playtime);
     end
 
-    download_images(all_games_items, 1, function() 
-        server.update({ id = "all_games", children = all_games_items });
-    end);
+    server.update({ id = "all_games", children = all_games_items });
 end
 
 -- is game name in filter
