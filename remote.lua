@@ -1,3 +1,5 @@
+local _ = require("./underscore");
+
 local dev = require("device");
 local server = require("server");
 local kb = require("keyboard");
@@ -136,26 +138,11 @@ function load_all_games()
 end
 
 -- Update "recently played" list
-function update_recent_games_list()
-    local n = 1;
-    recent_games_list = {};
-
-    for i,game in ipairs(recent_games) do
-        local item = { 
-            type = "item", 
-            img_icon_url = game.img_icon_url, 
-            text = game.name, 
-            appid = game.appid, 
-            name = game.name, 
-            playtime_forever = game.playtime_forever,
-        };
-
-        if (item.img_icon_url ~= "") then
-            item.image = "images\\" .. game.img_icon_url .. ".jpg";
-        end
-        recent_games_list[n] = item;
-        n = n + 1;
-    end
+function update_recent_games_list()    
+    recent_games_list = _(recent_games):chain()
+        :map(game_to_item)
+        :map(item_with_img)
+        .value();
 
     download_images(recent_games_list, 1, function() 
         server.update({ id = "recent_games", children = recent_games_list });
@@ -164,37 +151,50 @@ end
 
 -- Update "all games" list
 function update_all_games_list()
-    local n = 1;
-    all_games_items = {};
+    all_games_items = _(all_games):chain()
+        :filter(filter_by_name)
+        :map(game_to_item)
+        :value();
 
-    for i,game in ipairs(all_games) do
-        if (filter == "" or string.find(string.lower(game.name), string.lower(filter)) ~= nil) then
-            local item = { 
-                type = "item", 
-                img_icon_url = game.img_icon_url, 
-                text = game.name, 
-                appid = game.appid, 
-                name = game.name, 
-                playtime_forever = game.playtime_forever 
-            };
-
-            if (item.img_icon_url ~= "") then
-                item.image = "images\\" .. game.img_icon_url .. ".jpg";
-            end
-            all_games_items[n] = item;
-            n = n + 1;
-        end
+    if (#all_games_items <= 20) then
+        all_games_items = _.map(all_games_items, item_with_img);
     end
 
     if (sort == "by_name") then
-        table.sort(all_games_items, by_name);
+        _.sort(all_games_items, by_name);
     else
-        table.sort(all_games_items, by_playtime);
+        _.sort(all_games_items, by_playtime);
     end
 
     download_images(all_games_items, 1, function() 
         server.update({ id = "all_games", children = all_games_items });
     end);
+end
+
+-- is game name in filter
+function filter_by_name(game)
+    return filter == "" or string.find(string.lower(game.name), string.lower(filter)) ~= nil;
+end
+
+-- map steam game to list item
+function game_to_item(game)
+    return { 
+        type = "item", 
+        img_icon_url = game.img_icon_url, 
+        text = game.name, 
+        appid = game.appid, 
+        name = game.name, 
+        playtime_forever = game.playtime_forever 
+    };
+end
+
+-- Add icon
+function item_with_img(item)
+    if (item.img_icon_url ~= "") then
+        item.image = "images\\" .. item.img_icon_url .. ".jpg";
+    end
+
+    return item;
 end
 
 -- Compare games by playtime
@@ -207,38 +207,34 @@ function by_name(a, b)
     return a.name < b.name;
 end
 
--- Download game image
+-- Download game images (recursively to avoid thread issues)
 function download_images(games, n, callback)
     local game = games[n];
 
     if (game == nil) then
         callback();
-        return;
-    end
-
-    if (game.img_icon_url == "" or game.img_icon_url == nil) then
+    elseif (game.img_icon_url == "" or game.img_icon_url == nil) then
         download_images(games, n + 1, callback);
-        return;
-    end
+    else 
+        local path = fs.remotedir();
+        local image_dir = fs.combine(path, "images");
+        local image_filename = fs.combine(image_dir, game.img_icon_url .. ".jpg");
 
-    local path = fs.remotedir();
-    local image_dir = fs.combine(path, "images");
-    local image_filename = fs.combine(image_dir, game.img_icon_url .. ".jpg");
+        local url = "http://media.steampowered.com/steamcommunity/public/images/apps/" .. game.appid .. "/" .. game.img_icon_url .. ".jpg";
 
-    local url = "http://media.steampowered.com/steamcommunity/public/images/apps/" .. game.appid .. "/" .. game.img_icon_url .. ".jpg";
+        if (not fs.exists(image_dir)) then
+            fs.createdir(image_dir);
+        end
 
-    if (not fs.exists(image_dir)) then
-        fs.createdir(image_dir);
-    end
-
-    if (not fs.exists(image_filename)) then
-        http.get(url, function (err, resp)
-            fs.createfile(image_filename);
-            fs.write(image_filename, resp);
+        if (not fs.exists(image_filename)) then
+            http.get(url, function (err, resp)
+                fs.createfile(image_filename);
+                fs.write(image_filename, resp);
+                download_images(games, n + 1, callback);
+            end);
+        else
             download_images(games, n + 1, callback);
-        end);
-    else
-        download_images(games, n + 1, callback);
+        end
     end
 end
 
