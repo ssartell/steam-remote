@@ -23,6 +23,10 @@ local recent_games_items = {};
 local all_games = {};
 local all_games_items = {};
 
+local chat_char = "t";
+local sort = "by_playtime"
+local filter = "";
+
 --@help Start steam
 actions.start_steam = function()
     os.start("F:/Program Files/Steam/steam.exe");
@@ -57,7 +61,6 @@ actions.update_text = function(text)
 end
 
 --@help Update chat key 
-local chat_char = "t";
 actions.update_char = function(text)
     chat_char = text;
 end
@@ -87,7 +90,6 @@ actions.send_text_esc = function()
 end
 
 --@help Update "all games list" filter
-local filter = "";
 actions.update_filter = function(text)
     filter = utf8.trim(text);
     if (string.len(filter) >= 2) then
@@ -103,7 +105,6 @@ actions.clear_filter = function()
 end
 
 --@help Sort "all games" by playtime
-local sort = "by_playtime"
 actions.sort_by_playtime = function()
     sort = "by_playtime"
     update_all_games_list();
@@ -206,14 +207,12 @@ end
 -- Download game images (recursively to avoid thread issues)
 function download_images(games, n, callback)
     local game = games[n];
-
     if (game == nil) then
         callback();
     elseif (game.img_icon_url == "" or game.img_icon_url == nil) then
         download_images(games, n + 1, callback);
     else 
-        local path = fs.remotedir();
-        local image_dir = fs.combine(path, "images");
+        local image_dir = fs.combine(fs.remotedir(), "images");
         local image_filename = fs.combine(image_dir, game.img_icon_url .. ".jpg");
 
         local url = "http://media.steampowered.com/steamcommunity/public/images/apps/" .. game.appid .. "/" .. game.img_icon_url .. ".jpg";
